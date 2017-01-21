@@ -1,0 +1,58 @@
+{
+  "name": "snapdragon-capture-set",
+  "description": "Plugin that adds a `.captureSet()` method to snapdragon, for matching and capturing substrings that have an `open` and `close`, like braces, brackets, etc",
+  "version": "0.1.0",
+  "homepage": "https://github.com/jonschlinkert/snapdragon-capture-set",
+  "author": "Jon Schlinkert (https://github.com/jonschlinkert)",
+  "repository": "jonschlinkert/snapdragon-capture-set",
+  "bugs": {
+    "url": "https://github.com/jonschlinkert/snapdragon-capture-set/issues"
+  },
+  "license": "MIT",
+  "files": [
+    "index.js"
+  ],
+  "main": "index.js",
+  "engines": {
+    "node": ">=4"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "dependencies": {
+    "define-property": "^0.2.5",
+    "extend-shallow": "^2.0.1"
+  },
+  "devDependencies": {
+    "gulp-format-md": "^0.1.11",
+    "mocha": "^3.2.0",
+    "snapdragon": "^0.8.1",
+    "snapdragon-util": "^0.1.1"
+  },
+  "keywords": [
+    "capture",
+    "generategenerator",
+    "set",
+    "snapdragon"
+  ],
+  "verb": {
+    "toc": "collapsible",
+    "layout": "default",
+    "tasks": [
+      "readme"
+    ],
+    "plugins": [
+      "gulp-format-md"
+    ],
+    "lint": {
+      "reflinks": true
+    },
+    "related": {
+      "list": []
+    },
+    "reflinks": [
+      "verb",
+      "verb-generate-readme"
+    ]
+  }
+}
