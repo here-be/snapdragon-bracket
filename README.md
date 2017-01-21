@@ -6,6 +6,7 @@
 <summary><strong>Table of Contents</strong></summary>
 - [Install](#install)
 - [Usage](#usage)
+- [API](#api)
 - [About](#about)
 </details>
 
@@ -16,6 +17,8 @@ Install with [npm](https://www.npmjs.com/):
 ```sh
 $ npm install --save snapdragon-capture-set
 ```
+
+## Usage
 
 ```js
 var Snapdragon = require('snapdragon');
@@ -48,7 +51,7 @@ console.log(ast.nodes[2]);
 //   position: Position { start: { line: 1, column: 2 }, end: { line: 1, column: 3 } } }
 ```
 
-## Usage
+## API
 
 **Example**
 
