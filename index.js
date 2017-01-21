@@ -1,35 +1,35 @@
 'use strict';
 
-var define = require('define-property');
+var Node = require('snapdragon-node');
 var extend = require('extend-shallow');
 
 /**
- * Adds a `.capture` method to a [snapdragon][] `Parser` instance.
- * Wraps the `.set` method to simplify the interface for creating
- * parsers.
+ * Register the plugin with `snapdragon.use()` or `snapdragon.parser.use()`.
  *
  * ```js
  * var Snapdragon = require('snapdragon');
- * var capture = require('snapdragon-capture');
- * var parser = new Snapdragon.Parser();
- * parser.use(capture());
+ * var captureSet = require('snapdragon-capture-set');
+ *
+ * // snapdragon
+ * var snapdragon = new Snapdragon();
+ * snapdragon.use(captureSet());
+ *
+ * // parser
+ * snapdragon.parser.use(captureSet());
  * ```
- * @param {String} `type`
- * @param {RegExp|Function} `regex` Pass the regex to use for capturing. Pass a function if you need access to the parser instance.
- * @return {Object} Returns the parser instance for chaining
  * @api public
  */
 
 module.exports = function(options) {
   return function(snapdragon) {
     if (snapdragon.isSnapdragon) {
-      snapdragon.parser.use(capture(options));
+      snapdragon.parser.use(captureSet(options));
       snapdragon.define('captureSet', function() {
         return this.parser.captureSet.apply(this.parser, arguments);
       });
 
     } else if (snapdragon.isParser) {
-      snapdragon.use(capture(options));
+      snapdragon.use(captureSet(options));
 
     } else {
       throw new Error('expected an instance of snapdragon or snapdragon.parser');
@@ -37,48 +37,67 @@ module.exports = function(options) {
   };
 };
 
-function capture(options) {
+/**
+ * Create a node of the given `type` using the specified regex or function.
+ *
+ * ```js
+ * parser.captureSet('brace', /^\{/, /^\}/);
+ * ```
+ * @param {String} `type`
+ * @param {RegExp|Function} `regex` Pass the regex to use for capturing the `open` and `close` nodes.
+ * @return {Object} Returns the parser instance for chaining
+ * @api public
+ */
+
+function captureSet(options) {
   return function(parser) {
     parser.define('captureOpen', function(type, regex, fn) {
       this.sets[type] = this.sets[type] || [];
+
+      // noop, we really only need the `.open` and `.close` visitors
+      this.set(type, function() {});
+
+      // create the `open` visitor for "type"
       this.set(type + '.open', function() {
-        var parsed = this.parsed;
         var pos = this.position();
-        var m = this.match(regex);
-        if (!m || !m[0]) return;
+        var match = this.match(regex);
+        if (!match || !match[0]) return;
 
         this.setCount++;
 
-        var val = m[0];
-        var open = pos({
-          type: type + '.open',
-          val: val
-        });
-
+        // get the last node, either from `this.stack` or `this.ast.nodes`,
+        // so we can push our "parent" node onto the `nodes` array of
+        // that node. We don't want to just push it onto the ast, because
+        // we need to easily be able to pop it off of a stack when we
+        // get the "close" node
         var prev = this.prev();
-        var node = pos({
+
+        // create the "parent" node (ex: "brace")
+        var parent = pos(new Node({
           type: type,
-          nodes: [open]
-        });
+          nodes: []
+        }));
 
-        // decorate "open"
-        define(open, 'match', m);
-        define(open, 'parent', node);
-        define(open, 'parsed', parsed);
-        define(open, 'rest', this.input);
+        // create the "open" node (ex: "brace.open")
+        var open = pos(new Node({
+          type: type + '.open',
+          val: match[0]
+        }));
 
-        // decorate "node"
-        define(node, 'match', m);
-        define(node, 'parent', prev);
-        define(node, 'parsed', parsed);
-        define(node, 'rest', this.input);
+        // push "open" node onto `parent.nodes`, and create
+        // a reference to parent on `open.parent`
+        parent.pushNode(open);
+
+        // add a non-enumerable reference to the "match" arguments
+        open.define('match', match);
+        parent.define('match', match);
 
         if (typeof fn === 'function') {
-          fn.call(this, open, node);
+          fn.call(this, open, parent);
         }
 
-        this.push(type, node);
-        prev.nodes.push(node);
+        this.push(type, parent);
+        prev.pushNode(parent);
       });
 
       return this;
@@ -91,18 +110,17 @@ function capture(options) {
 
       var opts = extend({}, this.options, options);
 
+      // create the `close` visitor for "type"
       this.set(type + '.close', function() {
-        var parsed = this.parsed;
         var pos = this.position();
-        var m = this.match(regex);
-        if (!m || !m[0]) return;
+        var match = this.match(regex);
+        if (!match || !match[0]) return;
 
         var parent = this.pop(type);
-        var node = pos({
+        var close = pos(new Node({
           type: type + '.close',
-          suffix: m[1],
-          val: m[0]
-        });
+          val: match[0]
+        }));
 
         if (!this.isType(parent, type)) {
           if (opts.strict) {
@@ -110,19 +128,16 @@ function capture(options) {
           }
 
           this.setCount--;
-          node.escaped = true;
-          return node;
+          close.define('escaped', true);
+          return close;
         }
 
-        if (node.suffix === '\\') {
-          parent.escaped = true;
-          node.escaped = true;
+        if (close.suffix === '\\') {
+          parent.define('escaped', true);
+          close.define('escaped', true);
         }
 
-        parent.nodes.push(node);
-        define(node, 'parsed', parsed);
-        define(node, 'parent', parent);
-        define(node, 'rest', this.input);
+        parent.pushNode(close);
       });
 
       return this;
